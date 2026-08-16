@@ -1,222 +1,369 @@
 # Legacy System Modernization Lab
 
-
-
 ## Project Overview
 
+This project demonstrates the deployment of a WordPress application stack on AWS as a hands-on cloud infrastructure project.
 
+The goal was to provision an Ubuntu EC2 server using **Terraform**, configure the server with **Apache, PHP, and MySQL**, deploy **WordPress**, verify that the application was operational, and finally remove the infrastructure using Terraform.
 
-This project demonstrates the deployment of a legacy-style web application stack on AWS using Terraform.
+Rather than manually creating the infrastructure through the AWS Management Console, Terraform was used to define and provision the AWS resources as code.
 
-
-
-The goal was to provision a cloud-based Ubuntu server and configure it to host WordPress using Apache, PHP, and MySQL. The project was completed as a hands-on infrastructure and cloud engineering exercise, with the infrastructure provisioned through Infrastructure as Code.
-
-
+---
 
 ## Architecture
 
+The application stack used the following architecture:
 
+```text
+                    Internet
+                       |
+                       v
+              AWS Security Group
+               HTTP (80) / SSH
+                       |
+                       v
+                 AWS EC2 Instance
+                   Ubuntu Linux
+                       |
+          +------------+------------+
+          |            |            |
+          v            v            v
+       Apache          PHP         MySQL
+          |                         |
+          v                         v
+      WordPress  <------------> wordpress_db
+```
 
-AWS EC2
+Apache served the web application, PHP provided the server-side runtime required by WordPress, and MySQL stored the application's data.
 
-- Ubuntu Linux
+---
 
-- Apache Web Server
+## Skills Demonstrated
 
-- PHP
+- Infrastructure as Code (IaC)
+- AWS EC2 provisioning
+- Terraform
+- Linux server administration
+- SSH remote administration
+- Apache web server configuration
+- PHP runtime installation
+- MySQL database administration
+- WordPress deployment
+- Linux file ownership and permissions
+- Git version control
+- GitHub project documentation
+- Cloud resource cleanup
 
-- MySQL
-
-- WordPress
-
-
-
-The infrastructure was provisioned using Terraform.
-
-
+---
 
 ## Technologies Used
 
+| Technology | Purpose |
+|---|---|
+| AWS EC2 | Cloud compute instance |
+| Terraform | Infrastructure provisioning and lifecycle management |
+| Ubuntu Linux | Server operating system |
+| Apache | Web server |
+| PHP | Server-side runtime for WordPress |
+| MySQL | Relational database |
+| WordPress | Web application/CMS |
+| SSH | Secure remote server access |
+| Git | Version control |
+| GitHub | Source control and project documentation |
 
+---
 
-- AWS EC2
+# Deployment Walkthrough
 
-- Terraform
+## 1. Infrastructure Provisioning with Terraform
 
-- Ubuntu Linux
+I used Terraform to provision the AWS infrastructure instead of manually creating the resources through the AWS Console.
 
-- Apache
+The Terraform configuration defined the EC2 instance and security group required for the WordPress server. An existing AWS EC2 key pair was associated with the instance to allow SSH access.
 
-- PHP
+After applying the Terraform configuration, the EC2 instance entered the **Running** state and passed its AWS status checks.
 
-- MySQL
+![AWS EC2 instance running](screenshots/01-ec2-instance-running.png)
 
-- WordPress
+*AWS EC2 instance running successfully after infrastructure provisioning.*
 
-- Git
+Terraform outputs were used to retrieve the public IP address and public DNS name of the server. The Terraform state also confirmed that the EC2 instance, security group, and Ubuntu AMI data source were being managed or referenced by the configuration.
 
-- GitHub
+![Terraform output and state](screenshots/02-terraform-output-state.png)
 
+*Terraform output and state information used to verify the provisioned infrastructure.*
 
+---
 
-## Implementation
+## 2. Server Preparation and SSH Access
 
+After provisioning the EC2 instance, I connected to the Ubuntu server using SSH.
 
+This provided remote command-line access to the instance so that the operating system and application stack could be configured.
 
-The project followed these major steps:
+![Ubuntu SSH session](screenshots/03-ubuntu-ssh-session.png)
 
+*SSH session established with the Ubuntu EC2 instance.*
 
+The Ubuntu package repositories and installed packages were then updated before application software was installed.
 
-1\. Provisioned an AWS EC2 instance using Terraform.
+Keeping the operating system updated helps ensure that current package versions and security updates are available.
 
-2\. Connected to the Ubuntu server using SSH.
+---
 
-3\. Updated the Ubuntu operating system.
+## 3. Web Stack Installation
 
-4\. Installed Apache.
+WordPress requires several components to operate. I installed:
 
-5\. Installed PHP and the required Apache PHP module.
+- **Apache** to serve web content over HTTP.
+- **PHP** to execute the server-side WordPress application code.
+- **MySQL** to store WordPress application data.
 
-6\. Installed MySQL.
+After installation, Apache and MySQL were started and configured to start automatically with the server.
 
-7\. Started and enabled Apache and MySQL.
+I verified both services with `systemctl`.
 
-8\. Verified that both services were running.
+![Apache and MySQL services running](screenshots/04-apache-mysql-running.png)
 
-9\. Secured the MySQL installation.
+*Apache and MySQL verified as active and running.*
 
-10\. Downloaded and installed WordPress.
+This verification was important before continuing because WordPress depends on both the web server and database service.
 
-11\. Configured the WordPress files for Apache.
+---
 
-12\. Created a dedicated MySQL database and user for WordPress.
+## 4. Database Configuration
 
-13\. Configured `wp-config.php` with the database connection information.
+MySQL was secured before creating the WordPress database.
 
-14\. Restarted Apache.
+The security configuration included actions such as removing anonymous users, disabling remote root login, removing the default test database, and reloading privilege tables.
 
-15\. Removed the default Apache index page.
+I then created a dedicated database named:
 
-16\. Accessed the WordPress installation through the EC2 public IP.
+```text
+wordpress_db
+```
 
-17\. Completed the WordPress installation and verified access to the WordPress dashboard.
+A separate MySQL user was created for WordPress and granted privileges specifically to the WordPress database.
 
+Using a dedicated application account avoids requiring WordPress to connect to the database using the MySQL root account.
 
+![WordPress database created](screenshots/05-wordpress-database.png)
 
-## Infrastructure as Code
+*MySQL verification showing the dedicated `wordpress_db` database.*
 
+Database credentials are not stored in this repository or displayed in the project documentation.
 
+---
 
-Terraform was used to provision and manage the AWS infrastructure.
+## 5. WordPress Deployment
 
+WordPress was downloaded and extracted on the Ubuntu server.
 
+The application files were then moved into Apache's document root:
 
-Using Terraform allowed the infrastructure to be created consistently from configuration rather than manually creating the EC2 resources through the AWS Console.
+```text
+/var/www/html
+```
 
+The ownership of the web directory was assigned to the Apache service account (`www-data`) so that the web server could properly access the application files.
 
+![WordPress files and permissions](screenshots/06-wordpress-files-permissions.png)
 
-The infrastructure was destroyed with Terraform after the project was completed to avoid leaving unnecessary AWS resources running.
+*WordPress files deployed to Apache's document root with the appropriate ownership.*
 
+The WordPress configuration file was then configured with the database name, database user, database password, and local database host.
 
+Sensitive database credentials have intentionally been excluded from this repository.
+
+After configuration, Apache was restarted so the application could be served with the completed configuration.
+
+---
+
+## 6. Final Application Verification
+
+After the server, database, and WordPress configuration were completed, I accessed the EC2 instance through its public IP address in a web browser.
+
+The WordPress installation process completed successfully.
+
+![WordPress installation success](screenshots/07-wordpress-install-success.png)
+
+*WordPress confirming that the application installation completed successfully.*
+
+I then logged into the WordPress administration dashboard.
+
+![WordPress dashboard](screenshots/08-wordpress-dashboard.png)
+
+*Successfully authenticated WordPress dashboard, confirming the application stack was operational.*
+
+Reaching the dashboard verified that the major components were working together successfully:
+
+```text
+Browser
+   |
+   v
+Apache
+   |
+   v
+PHP / WordPress
+   |
+   v
+MySQL
+```
+
+At this point, the deployed WordPress application was operational on the AWS EC2 instance.
+
+---
+
+## 7. Infrastructure Cleanup
+
+After validating the completed deployment, I used Terraform to destroy the AWS infrastructure created for the project.
+
+```bash
+terraform destroy
+```
+
+Terraform identified the managed resources scheduled for deletion and removed them after confirmation.
+
+![Terraform destroy completed](screenshots/09-terraform-destroy.png)
+
+*Terraform successfully destroying the project infrastructure after validation.*
+
+The final output confirmed:
+
+```text
+Destroy complete! Resources: 2 destroyed.
+```
+
+Cleaning up the infrastructure after completing the lab prevented unnecessary AWS resources from remaining active and demonstrated the complete Terraform resource lifecycle:
+
+```text
+Write Configuration
+       |
+       v
+terraform plan
+       |
+       v
+terraform apply
+       |
+       v
+Validate Deployment
+       |
+       v
+terraform destroy
+```
+
+---
 
 ## Security Considerations
 
+Several security practices were incorporated into the project:
 
+- SSH access used an EC2 key pair rather than password-based server authentication.
+- MySQL remote root login was disabled.
+- Anonymous MySQL users were removed.
+- The default MySQL test database was removed.
+- WordPress used a dedicated database user rather than the MySQL root account.
+- Terraform state files are excluded from GitHub.
+- Private key files are excluded from GitHub.
+- Environment files are excluded from GitHub.
+- Database passwords and application credentials are not documented in the repository.
 
-Sensitive infrastructure files were intentionally excluded from the repository.
+The `.gitignore` file prevents several sensitive or unnecessary files from being committed:
 
+```gitignore
+.terraform/
+*.tfstate
+*.tfstate.*
+*.pem
+.env
+```
 
+---
 
-The `.gitignore` file excludes:
+## Repository Structure
 
+```text
+legacy-system-lab/
+|
+|-- main.tf
+|-- .terraform.lock.hcl
+|-- .gitignore
+|-- README.md
+|
+`-- screenshots/
+    |-- 01-ec2-instance-running.png
+    |-- 02-terraform-output-state.png
+    |-- 03-ubuntu-ssh-session.png
+    |-- 04-apache-mysql-running.png
+    |-- 05-wordpress-database.png
+    |-- 06-wordpress-files-permissions.png
+    |-- 07-wordpress-install-success.png
+    |-- 08-wordpress-dashboard.png
+    `-- 09-terraform-destroy.png
+```
 
+Terraform state files and private keys are intentionally excluded from the repository.
 
-- Terraform state files
+---
 
-- Terraform working directories
+## Key Lessons Learned
 
-- Private key files
+This project helped me understand how the individual layers of a web application stack work together.
 
-- Environment files
+### Infrastructure as Code
 
+Using Terraform demonstrated how cloud infrastructure can be defined in configuration files, reviewed before deployment, reproduced, and removed when no longer required.
 
+### Linux Administration
 
-Terraform state files were not uploaded to GitHub.
+Working directly with Ubuntu provided hands-on experience with package management, file permissions, service management, and remote administration through SSH.
 
+### Web Application Architecture
 
+Installing the stack individually helped me understand the different responsibilities of Apache, PHP, MySQL, and WordPress rather than treating WordPress as a single standalone application.
 
-## What I Learned
+### Database Security
 
+Creating a dedicated WordPress database user demonstrated why applications should use purpose-specific credentials rather than administrative database accounts.
 
+### Troubleshooting
 
-This project provided hands-on experience with:
+The deployment required checking service status, correcting configuration issues, working with Linux permissions, and verifying each component before moving to the next stage.
 
+### Git and GitHub
 
+This project also introduced me to the Git workflow of staging, committing, connecting a local repository to GitHub, pushing changes, and documenting technical work in a README.
 
-- Infrastructure as Code using Terraform
-
-- AWS EC2
-
-- Linux server administration
-
-- SSH access
-
-- Apache web server configuration
-
-- PHP application environments
-
-- MySQL database administration
-
-- WordPress deployment
-
-- Git version control
-
-- GitHub repository management
-
-
-
-One of the most valuable lessons was understanding how multiple infrastructure and application components work together to deliver a functioning web application.
-
-
-
-## Project Outcome
-
-
-
-The final result was a successfully deployed WordPress application running on an AWS EC2 Ubuntu server.
-
-
-
-The application was accessible through the EC2 public IP address, and the WordPress dashboard was successfully accessed after installation.
-
-
-
-After verification, the AWS infrastructure was destroyed using Terraform.
-
-
+---
 
 ## Future Improvements
 
+This project intentionally kept the architecture simple so I could focus on understanding the individual infrastructure and application components.
 
+Future iterations could include:
 
-Future versions of this project could explore:
+- **Ansible** for automated server configuration
+- **Docker** for application containerization
+- **CI/CD** for automated infrastructure and application deployments
+- **Amazon RDS** to separate the database from the EC2 application server
+- **HTTPS/TLS** for encrypted web traffic
+- **Route 53** and a custom domain
+- More restrictive network and security group design
+- Centralized monitoring and logging
+- Automated infrastructure validation and testing
+- Remote Terraform state management
 
+These improvements would build on the foundation established in this project and move the architecture toward a more automated and production-oriented design.
 
+---
 
-- Configuration management with Ansible
+## Project Outcome
 
-- CI/CD automation
+The project successfully demonstrated the complete lifecycle of deploying a WordPress application stack on AWS:
 
-- Docker containerization
+**Provision → Configure → Deploy → Verify → Destroy**
 
-- HTTPS with TLS certificates
+Terraform provisioned the AWS infrastructure, Ubuntu provided the server environment, Apache and PHP served the application, MySQL provided the database layer, and WordPress was successfully installed and accessed through its administrative dashboard.
 
-- AWS RDS instead of MySQL running directly on EC2
-
-- AWS networking improvements
-
-- Monitoring and logging
-
-- Automated infrastructure testing
+The infrastructure was then removed using Terraform after successful verification.
 
